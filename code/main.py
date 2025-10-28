@@ -60,38 +60,42 @@ from visualization import (plot_pareto_front, plot_confusion_matrix,
                           plot_comparison_bar, export_results_to_csv)
 
 def main():
-    """Main pipeline execution"""
-    print("\n" + "="*70)
-    print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
-    print("Based on Bohrer et al. (2024)")
-    print("="*70)
+    # """Main pipeline execution - AUGMENTED DATA ONLY"""
+    # print("\n" + "="*70)
+    # print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
+    # print("Based on Bohrer et al. (2024)")
+    # print("MODE: AUGMENTED DATA ONLY")
+    # print("="*70)
     
-    # Create necessary folders
-    os.makedirs('./features', exist_ok=True)
-    os.makedirs('./results', exist_ok=True)
+    # # Create necessary folders
+    # os.makedirs('./features', exist_ok=True)
+    # os.makedirs('./results', exist_ok=True)
     
-    print("\n" + "="*70)
-    print("[STEP 1] EXTRACTING CNN FEATURES DIRECTLY FROM IMAGES")
-    print("="*70)
+    # # ========================================================================
+    # # STEP 1: DIRECT FEATURE EXTRACTION (AUGMENTED ONLY)
+    # # ========================================================================
+    # print("\n" + "="*70)
+    # print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
+    # print("="*70)
     
-    data_folder = './data/extracteddata'
+    # data_folder = './data/extracteddata'
     
-    if not os.path.exists(data_folder):
-        print(f"✗ Error: '{data_folder}' not found!")
-        sys.exit(1)
+    # if not os.path.exists(data_folder):
+    #     print(f"✗ Error: '{data_folder}' not found!")
+    #     sys.exit(1)
     
-    # Extract features directly from images
-    feature_files = process_all_datasets(
-        input_folder=data_folder,
-        output_folder='./features',
-        skip_augmented=False  # Set to True for original images only
-    )
+    # # Extract features from augmented data only
+    # feature_files = process_all_datasets(
+    #     input_folder=data_folder,
+    #     output_folder='./features',
+    #     only_augmented=True  # ← AUGMENTED DATA ONLY
+    # )
     
-    if len(feature_files) == 0:
-        print("\n✗ No datasets were successfully processed!")
-        sys.exit(1)
+    # if len(feature_files) == 0:
+    #     print("\n✗ No datasets were successfully processed!")
+    #     sys.exit(1)
     
-    print(f"\n✓ Extracted features from {len(feature_files)} datasets")
+    # print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
     
     # ========================================================================
     # STEP 2: FEATURE SELECTION WITH NSGA-II
@@ -100,23 +104,27 @@ def main():
     print("[STEP 2] MULTI-OBJECTIVE FEATURE SELECTION")
     print("="*70)
     
-    # Get all feature files
+    # Get ALL feature files
     all_feature_files = [f for f in os.listdir('./features') 
-                        if f.endswith('_features.npz')]
-    
+                        if f.endswith('.npz')]
+
     if len(all_feature_files) == 0:
         print("✗ No feature files found!")
         sys.exit(1)
-    
+
     print(f"Processing {len(all_feature_files)} datasets\n")
-    
+
     all_results = []
-    
+
     for idx, feature_file in enumerate(all_feature_files, 1):
-        dataset_name = feature_file.replace('_vgg16_features.npz', '')
+        # Extract dataset name by removing all possible suffixes
+        dataset_name = feature_file
+        for suffix in ['_augmented_densenet121_features.npz', '_densenet121_features.npz', 
+                    '_vgg16_features.npz', '_features.npz']:
+            dataset_name = dataset_name.replace(suffix, '')
         
         print(f"\n{'='*70}")
-        print(f"DATASET {idx}/{len(all_feature_files)}: {dataset_name}")
+        print(f"DATASET {idx}/{len(all_feature_files)}: {dataset_name} (AUGMENTED)")
         print(f"{'='*70}")
         
         try:
@@ -126,7 +134,7 @@ def main():
             X_val, y_val = data['X_val'], data['y_val']
             X_test, y_test = data['X_test'], data['y_test']
             
-            print(f"  Features: {X_train.shape[1]}")
+            print(f"  Features: {X_train.shape[1]} (DenseNet121)")
             print(f"  Train: {X_train.shape[0]}, Val: {X_val.shape[0]}, Test: {X_test.shape[0]}")
             
             # Generate initial population
@@ -168,8 +176,8 @@ def main():
             # Generate visualizations
             print(f"\n  Generating visualizations...")
             plot_pareto_front(pareto_results, 
-                            f'./results/{dataset_name}_pareto.png',
-                            dataset_name)
+                            f'./results/{dataset_name}_augmented_pareto.png',
+                            f"{dataset_name} (Augmented)")
             
             # Final evaluation on test set
             print(f"\n  Final evaluation on test set...")
@@ -179,21 +187,21 @@ def main():
             )
             
             plot_confusion_matrix(metrics_ga['confusion_matrix'],
-                                f'./results/{dataset_name}_confusion.png',
-                                dataset_name)
+                                f'./results/{dataset_name}_augmented_confusion.png',
+                                f"{dataset_name} (Augmented)")
             
             comparison = {
                 'All Features': metrics_all,
-                'Filter': metrics_filter,
+                'Filter (ANOVA)': metrics_filter,
                 'GA (NSGA-II)': metrics_ga
             }
             plot_comparison_bar(comparison,
-                              f'./results/{dataset_name}_comparison.png',
-                              dataset_name)
+                              f'./results/{dataset_name}_augmented_comparison.png',
+                              f"{dataset_name} (Augmented)")
             
             # Store results
             all_results.append({
-                'Dataset': dataset_name,
+                'Dataset': f"{dataset_name}_augmented",
                 'Total_Features': X_train.shape[1],
                 'GA_Features': metrics_ga['num_features'],
                 'GA_Test_Accuracy': metrics_ga['accuracy'],
@@ -202,31 +210,28 @@ def main():
                 'GA_Recall': metrics_ga['recall']
             })
             
-            print(f"\n✓ Completed: {dataset_name}")
+            print(f"\n✓ Completed: {dataset_name} (Augmented)")
             
         except Exception as e:
             print(f"\n✗ Error processing {dataset_name}: {e}")
             import traceback
             traceback.print_exc()
             continue
-    
-    # ========================================================================
-    # FINAL SUMMARY
-    # ========================================================================
+
     print(f"\n{'='*70}")
     print("EXPORTING RESULTS SUMMARY")
     print(f"{'='*70}")
     
     if len(all_results) > 0:
-        export_results_to_csv(all_results, './results/summary.csv')
+        export_results_to_csv(all_results, './results/summary_augmented.csv')
         
         print("\n" + "="*70)
-        print("FINAL RESULTS")
+        print("FINAL RESULTS (AUGMENTED DATA)")
         print("="*70)
-        print(f"{'Dataset':<30} {'Test Accuracy':<15} {'Features':<10}")
+        print(f"{'Dataset':<35} {'Test Accuracy':<15} {'Features':<10}")
         print("-"*70)
         for result in all_results:
-            print(f"{result['Dataset']:<30} "
+            print(f"{result['Dataset']:<35} "
                   f"{result['GA_Test_Accuracy']:<15.4f} "
                   f"{result['GA_Features']:<10}")
         print("="*70)
@@ -235,6 +240,7 @@ def main():
     print("✓ PIPELINE COMPLETED SUCCESSFULLY!")
     print("="*70)
     print("Results saved in './results/' directory")
+    print("All results use AUGMENTED DATA ONLY")
     print("="*70)
 
 # Run the main function

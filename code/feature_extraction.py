@@ -12,21 +12,25 @@ import tensorflow as tf
 
 tf.get_logger().setLevel('ERROR')
 
-def find_images_by_class(folder_path, skip_augmented=True):
-    """Find all images organized by class"""
+def find_images_by_class(folder_path, only_augmented=True):
+    """Find all images - ONLY from augmented folders"""
     image_extensions = ('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')
     class_images = {}
     
     for root, dirs, files in os.walk(folder_path):
-        if skip_augmented and 'augmented' in root.lower():
-            continue
+        # SKIP original folders, ONLY process augmented
+        if only_augmented:
+            if 'original' in root.lower():
+                continue  # Skip original folders
+            if 'augmented' not in root.lower() and any('augmented' in d.lower() for d in os.listdir(os.path.dirname(root)) if os.path.isdir(os.path.join(os.path.dirname(root), d))):
+                continue  # Skip if augmented folder exists but we're not in it
         
         for file in files:
             if file.lower().endswith(image_extensions):
                 img_path = os.path.join(root, file)
                 
                 parent = os.path.basename(os.path.dirname(img_path))
-                if parent.lower() in ['original', 'augmented', 'images']:
+                if parent.lower() in ['augmented', 'images']:
                     parent = os.path.basename(os.path.dirname(os.path.dirname(img_path)))
                 
                 if parent not in class_images:
@@ -74,10 +78,11 @@ def extract_features_batch(image_paths, model, batch_size=32):
     
     return np.vstack(features_list)
 
-def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augmented=True):
-    """Process dataset with train/test detection"""
+def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augmented=True):
+    """Process dataset with train/test detection - ONLY AUGMENTED DATA"""
     print(f"\n{'='*70}")
     print(f"Processing: {dataset_name}")
+    print(f"Mode: AUGMENTED DATA ONLY")
     print(f"{'='*70}")
     
     # Load DenseNet121
@@ -92,7 +97,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
     if has_train_test_split(dataset_path):
         print("\n✓ Found existing train/test split")
         
-        # Find train and test folders
         train_folder = None
         test_folder = None
         
@@ -108,15 +112,14 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
             print("✗ Could not locate train/test folders")
             return None
         
-        # Load train images
-        print(f"\nLoading from train: {train_folder}")
-        train_class_images = find_images_by_class(train_folder, skip_augmented)
+        # Load train images (augmented only)
+        print(f"\nLoading from train (AUGMENTED ONLY): {train_folder}")
+        train_class_images = find_images_by_class(train_folder, only_augmented=True)
         
         if len(train_class_images) == 0:
-            print("✗ No training images found")
+            print("✗ No augmented training images found")
             return None
         
-        # Flatten train images
         train_paths = []
         train_labels = []
         class_names = sorted(train_class_images.keys())
@@ -125,13 +128,13 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
             paths = train_class_images[class_name]
             train_paths.extend(paths)
             train_labels.extend([class_idx] * len(paths))
-            print(f"  {class_name}: {len(paths)} train images")
+            print(f"  {class_name}: {len(paths)} augmented train images")
         
         train_labels = np.array(train_labels)
         
-        # Load test images
-        print(f"\nLoading from test: {test_folder}")
-        test_class_images = find_images_by_class(test_folder, skip_augmented)
+        # Load test images (augmented only)
+        print(f"\nLoading from test (AUGMENTED ONLY): {test_folder}")
+        test_class_images = find_images_by_class(test_folder, only_augmented=True)
         
         test_paths = []
         test_labels = []
@@ -141,11 +144,11 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
                 paths = test_class_images[class_name]
                 test_paths.extend(paths)
                 test_labels.extend([class_idx] * len(paths))
-                print(f"  {class_name}: {len(paths)} test images")
+                print(f"  {class_name}: {len(paths)} augmented test images")
         
         test_labels = np.array(test_labels)
         
-        # Create validation split from training (10% of total)
+        # Create validation split
         print(f"\nCreating validation split from training data...")
         val_size = min(0.14, max(0.1, 2.0 / len(train_paths)))
         train_paths, val_paths, train_labels, val_labels = train_test_split(
@@ -158,19 +161,19 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
         print(f"  Test: {len(test_paths)}")
         
     else:
-        print("\n✗ No train/test split - creating 70:10:20 split")
+        print("\n✗ No train/test split - creating 70:10:20 split from AUGMENTED data")
         
-        # Load all images
-        class_images = find_images_by_class(dataset_path, skip_augmented)
+        # Load augmented images only
+        class_images = find_images_by_class(dataset_path, only_augmented=True)
         
         if len(class_images) == 0:
-            print("✗ No images found")
+            print("✗ No augmented images found")
             return None
         
-        print(f"Found {len(class_images)} classes:")
+        print(f"Found {len(class_images)} classes (AUGMENTED ONLY):")
         for cls, imgs in class_images.items():
-            print(f"  {cls}: {len(imgs)} images")
-
+            print(f"  {cls}: {len(imgs)} augmented images")
+        
         all_paths = []
         all_labels = []
         class_names = sorted(class_images.keys())
@@ -197,8 +200,7 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
         print(f"\n  Train: {len(train_paths)}")
         print(f"  Val: {len(val_paths)}")
         print(f"  Test: {len(test_paths)}")
-    
-    # Extract features
+
     print("\n[Extracting train features...]")
     train_features = extract_features_batch(train_paths, model)
     
@@ -211,9 +213,8 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
     if train_features is None:
         print("✗ Failed to extract features")
         return None
-    
-    # Save
-    output_path = os.path.join(output_folder, f"{dataset_name}_densenet121_features.npz")
+
+    output_path = os.path.join(output_folder, f"{dataset_name}_augmented_densenet121_features.npz")
     np.savez_compressed(output_path,
                        X_train=train_features, y_train=train_labels,
                        X_val=val_features, y_val=val_labels,
@@ -227,8 +228,8 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augme
 
 def process_all_datasets(input_folder='./data/extracteddata',
                         output_folder='./features',
-                        skip_augmented=False):
-    """Process all datasets"""
+                        only_augmented=True):
+    """Process all datasets - AUGMENTED DATA ONLY"""
     os.makedirs(output_folder, exist_ok=True)
     
     datasets = [d for d in os.listdir(input_folder) 
@@ -237,13 +238,13 @@ def process_all_datasets(input_folder='./data/extracteddata',
     print(f"\n{'='*70}")
     print(f"DenseNet121 Feature Extraction (1024 features)")
     print(f"Datasets: {len(datasets)}")
-    print(f"Skip augmented: {skip_augmented}")
+    print(f"Mode: AUGMENTED DATA ONLY")
     print(f"{'='*70}")
     
     processed = []
     for dataset_name in datasets:
         dataset_path = os.path.join(input_folder, dataset_name)
-        result = process_dataset_direct(dataset_path, output_folder, dataset_name, skip_augmented)
+        result = process_dataset_direct(dataset_path, output_folder, dataset_name, only_augmented=True)
         if result:
             processed.append(result)
     
@@ -254,4 +255,4 @@ def process_all_datasets(input_folder='./data/extracteddata',
     return processed
 
 if __name__ == "__main__":
-    process_all_datasets(skip_augmented=False)
+    process_all_datasets(only_augmented=True)
