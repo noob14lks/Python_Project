@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 import numpy as np
 
+
 def setup_nsga2(num_features):
     if not hasattr(setup_nsga2, "initialized"):
         creator.create("FitnessMulti", base.Fitness, weights=(1.0, -1.0))
@@ -17,8 +18,8 @@ def setup_nsga2(num_features):
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     return toolbox
 
-def guided_crossover(ind1, ind2, indpb=0.5):
-    """Custom crossover preserving important features"""
+
+def guided_crossover(ind1, ind2, indpb=0.7):
     for i in range(len(ind1)):
         if ind1[i] == ind2[i]:
             continue
@@ -26,8 +27,8 @@ def guided_crossover(ind1, ind2, indpb=0.5):
             ind1[i], ind2[i] = ind2[i], ind1[i]
     return ind1, ind2
 
-def guided_mutation(individual, importance_scores=None, mutpb=0.1):
-    """Mutation with importance-based probability"""
+
+def guided_mutation(individual, importance_scores=None, mutpb=0.15):
     for i in range(len(individual)):
         if random.random() < mutpb:
             prob = 1.0
@@ -37,8 +38,8 @@ def guided_mutation(individual, importance_scores=None, mutpb=0.1):
                 individual[i] = 1 - individual[i]
     return (individual,)
 
+
 def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
-    """Enhanced evaluation with validation set"""
     selected_idx = [i for i, bit in enumerate(individual) if bit == 1]
     
     if len(selected_idx) == 0:
@@ -63,25 +64,24 @@ def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
     
     return (accuracy, len(selected_idx))
 
-def run_nsga2(X_train, y_train, X_val, y_val, population_size=50, ngen=30, 
+
+def run_nsga2(X_train, y_train, X_val, y_val, population_size=120, ngen=60, 
               initial_pop=None, importance_scores=None, classifier_type='rf'):
-    """Run NSGA-II with enhanced parameters"""
     num_features = X_train.shape[1]
     toolbox = setup_nsga2(num_features)
     
-    toolbox.register("mate", guided_crossover, indpb=0.5)
+    toolbox.register("mate", guided_crossover, indpb=0.7)
     toolbox.register("mutate", guided_mutation, 
-                    importance_scores=importance_scores, mutpb=0.1)
+                    importance_scores=importance_scores, mutpb=0.15)
     toolbox.register("select", tools.selNSGA2)
     toolbox.register("evaluate", evaluate, X_train=X_train, y_train=y_train,
-                    X_val=X_val, y_val=y_val, classifier_type=classifier_type)
+                     X_val=X_val, y_val=y_val, classifier_type=classifier_type)
     
     if initial_pop is not None:
         population = [creator.Individual(ind) for ind in initial_pop]
     else:
         population = toolbox.population(n=population_size)
     
-    # Initial evaluation
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     for ind in invalid_ind:
         ind.fitness.values = toolbox.evaluate(ind)

@@ -1,6 +1,9 @@
-import os
-import sys
 import numpy as np
+import random
+
+np.random.seed(42)
+random.seed(42)
+
 
 def check_dependencies():
     """Check if all required packages are installed"""
@@ -48,10 +51,10 @@ def check_dependencies():
     
     print("✓ All dependencies installed\n")
 
-# Check dependencies first
+
 check_dependencies()
 
-# Import modules
+
 from feature_extraction import process_all_datasets
 from base_feature_selection import generate_initial_population, embedded_rf, filter_anova
 from nsga2_optimization import run_nsga2, evaluate
@@ -59,21 +62,17 @@ from classification_evaluation import compare_methods
 from visualization import (plot_pareto_front, plot_confusion_matrix,
                           plot_comparison_bar, export_results_to_csv)
 
+
 def main():
-    """Main pipeline execution - AUGMENTED DATA ONLY"""
     print("\n" + "="*70)
     print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
     print("Based on Bohrer et al. (2024)")
     print("MODE: AUGMENTED DATA ONLY")
     print("="*70)
     
-    # Create necessary folders
     os.makedirs('./features', exist_ok=True)
     os.makedirs('./results', exist_ok=True)
     
-    # ========================================================================
-    # STEP 1: DIRECT FEATURE EXTRACTION (AUGMENTED ONLY)
-    # ========================================================================
     print("\n" + "="*70)
     print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
     print("="*70)
@@ -84,11 +83,10 @@ def main():
         print(f"✗ Error: '{data_folder}' not found!")
         sys.exit(1)
     
-    # Extract features from augmented data only
     feature_files = process_all_datasets(
         input_folder=data_folder,
         output_folder='./features',
-        only_augmented=True  # ← AUGMENTED DATA ONLY
+        only_augmented=True
     )
     
     if len(feature_files) == 0:
@@ -97,14 +95,10 @@ def main():
     
     print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
     
-    # ========================================================================
-    # STEP 2: FEATURE SELECTION WITH NSGA-II
-    # ========================================================================
     print("\n" + "="*70)
     print("[STEP 2] MULTI-OBJECTIVE FEATURE SELECTION")
     print("="*70)
     
-    # Get ALL feature files
     all_feature_files = [f for f in os.listdir('./features') 
                         if f.endswith('.npz')]
 
@@ -117,10 +111,9 @@ def main():
     all_results = []
 
     for idx, feature_file in enumerate(all_feature_files, 1):
-        # Extract dataset name by removing all possible suffixes
         dataset_name = feature_file
         for suffix in ['_augmented_densenet121_features.npz', '_densenet121_features.npz', 
-                    '_vgg16_features.npz', '_features.npz']:
+                       '_vgg16_features.npz', '_features.npz']:
             dataset_name = dataset_name.replace(suffix, '')
         
         print(f"\n{'='*70}")
@@ -128,7 +121,6 @@ def main():
         print(f"{'='*70}")
         
         try:
-            # Load features
             data = np.load(os.path.join('./features', feature_file))
             X_train, y_train = data['X_train'], data['y_train']
             X_val, y_val = data['X_val'], data['y_val']
@@ -137,25 +129,22 @@ def main():
             print(f"  Features: {X_train.shape[1]} (DenseNet121)")
             print(f"  Train: {X_train.shape[0]}, Val: {X_val.shape[0]}, Test: {X_test.shape[0]}")
             
-            # Generate initial population
             k_features = min(100, max(10, X_train.shape[1] // 10))
             
             print(f"\n  Generating initial population...")
             initial_pop = generate_initial_population(X_train, y_train, 
-                                                     pop_size=50, k=k_features)
+                                                     pop_size=120, k=k_features)
             _, importance_scores = embedded_rf(X_train, y_train, k=X_train.shape[1])
             filter_indices, _ = filter_anova(X_train, y_train, k=k_features)
             print(f"  ✓ Population ready")
             
-            # Run NSGA-II
             print(f"\n  Running NSGA-II optimization...")
             pareto_front = run_nsga2(X_train, y_train, X_val, y_val,
-                                    population_size=50, ngen=30,
+                                    population_size=120, ngen=60,
                                     initial_pop=initial_pop,
                                     importance_scores=importance_scores,
                                     classifier_type='rf')
             
-            # Extract Pareto results
             print(f"\n  Extracting Pareto solutions...")
             pareto_results = []
             for ind in pareto_front:
@@ -173,13 +162,11 @@ def main():
             print(f"  ✓ Best solution: {len(ga_indices)} features, "
                   f"Val Accuracy: {best_solution['accuracy']:.4f}")
             
-            # Generate visualizations
             print(f"\n  Generating visualizations...")
             plot_pareto_front(pareto_results, 
                             f'./results/{dataset_name}_augmented_pareto.png',
                             f"{dataset_name} (Augmented)")
             
-            # Final evaluation on test set
             print(f"\n  Final evaluation on test set...")
             metrics_all, metrics_filter, metrics_ga = compare_methods(
                 X_train, y_train, X_test, y_test,
@@ -199,7 +186,6 @@ def main():
                               f'./results/{dataset_name}_augmented_comparison.png',
                               f"{dataset_name} (Augmented)")
             
-            # Store results
             all_results.append({
                 'Dataset': f"{dataset_name}_augmented",
                 'Total_Features': X_train.shape[1],
@@ -217,6 +203,7 @@ def main():
             import traceback
             traceback.print_exc()
             continue
+
 
     print(f"\n{'='*70}")
     print("EXPORTING RESULTS SUMMARY")
@@ -243,7 +230,7 @@ def main():
     print("All results use AUGMENTED DATA ONLY")
     print("="*70)
 
-# Run the main function
+
 if __name__ == "__main__":
     try:
         main()
