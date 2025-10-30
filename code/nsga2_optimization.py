@@ -65,7 +65,7 @@ def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
     return (accuracy, len(selected_idx))
 
 
-def run_nsga2(X_train, y_train, X_val, y_val, population_size=120, ngen=60, 
+def run_nsga2(X_train, y_train, X_val, y_val, population_size=150, ngen=60, 
               initial_pop=None, importance_scores=None, classifier_type='rf'):
     num_features = X_train.shape[1]
     toolbox = setup_nsga2(num_features)

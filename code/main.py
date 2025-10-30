@@ -1,3 +1,5 @@
+import os
+import sys
 import numpy as np
 import random
 
@@ -64,36 +66,36 @@ from visualization import (plot_pareto_front, plot_confusion_matrix,
 
 
 def main():
-    print("\n" + "="*70)
-    print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
-    print("Based on Bohrer et al. (2024)")
-    print("MODE: AUGMENTED DATA ONLY")
-    print("="*70)
+    # print("\n" + "="*70)
+    # print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
+    # print("Based on Bohrer et al. (2024)")
+    # print("MODE: AUGMENTED DATA ONLY")
+    # print("="*70)
     
-    os.makedirs('./features', exist_ok=True)
-    os.makedirs('./results', exist_ok=True)
+    # os.makedirs('./features', exist_ok=True)
+    # os.makedirs('./results', exist_ok=True)
     
-    print("\n" + "="*70)
-    print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
-    print("="*70)
+    # print("\n" + "="*70)
+    # print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
+    # print("="*70)
     
-    data_folder = './data/extracteddata'
+    # data_folder = './data/extracteddata'
     
-    if not os.path.exists(data_folder):
-        print(f"✗ Error: '{data_folder}' not found!")
-        sys.exit(1)
+    # if not os.path.exists(data_folder):
+    #     print(f"✗ Error: '{data_folder}' not found!")
+    #     sys.exit(1)
     
-    feature_files = process_all_datasets(
-        input_folder=data_folder,
-        output_folder='./features',
-        only_augmented=True
-    )
+    # feature_files = process_all_datasets(
+    #     input_folder=data_folder,
+    #     output_folder='./features',
+    #     only_augmented=True
+    # )
     
-    if len(feature_files) == 0:
-        print("\n✗ No datasets were successfully processed!")
-        sys.exit(1)
+    # if len(feature_files) == 0:
+    #     print("\n✗ No datasets were successfully processed!")
+    #     sys.exit(1)
     
-    print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
+    # print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
     
     print("\n" + "="*70)
     print("[STEP 2] MULTI-OBJECTIVE FEATURE SELECTION")
@@ -133,14 +135,14 @@ def main():
             
             print(f"\n  Generating initial population...")
             initial_pop = generate_initial_population(X_train, y_train, 
-                                                     pop_size=120, k=k_features)
+                                                     pop_size=150, k=k_features)
             _, importance_scores = embedded_rf(X_train, y_train, k=X_train.shape[1])
             filter_indices, _ = filter_anova(X_train, y_train, k=k_features)
             print(f"  ✓ Population ready")
             
             print(f"\n  Running NSGA-II optimization...")
             pareto_front = run_nsga2(X_train, y_train, X_val, y_val,
-                                    population_size=120, ngen=60,
+                                    population_size=150, ngen=60,
                                     initial_pop=initial_pop,
                                     importance_scores=importance_scores,
                                     classifier_type='rf')

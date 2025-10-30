@@ -18,7 +18,6 @@ def find_images_by_class(folder_path, only_augmented=False):
     class_images = {}
     
     for root, dirs, files in os.walk(folder_path):
-        # Handle augmented/original filtering
         if only_augmented:
             if 'original' in root.lower():
                 continue
@@ -39,41 +38,33 @@ def find_images_by_class(folder_path, only_augmented=False):
     
     return class_images
 
-def check_split_structure(dataset_path):
-    """
-    Check what split structure exists:
-    Returns: 'train_val_test', 'train_test', or 'none'
-    """
-    subdirs = [d.lower() for d in os.listdir(dataset_path) 
-               if os.path.isdir(os.path.join(dataset_path, d))]
+def check_split_structure(base_path):
+    train_folder, val_folder, test_folder = find_split_folders(base_path)
     
-    has_train = any('train' in d for d in subdirs)
-    has_val = any('val' in d or 'valid' in d for d in subdirs)
-    has_test = any('test' in d for d in subdirs)
-    
-    if has_train and has_val and has_test:
+    if train_folder and val_folder and test_folder:
         return 'train_val_test'
-    elif has_train and has_test:
+    elif train_folder and test_folder:
         return 'train_test'
     else:
         return 'none'
 
-def find_split_folders(dataset_path):
-    """Find train/validation/test folders"""
+def find_split_folders(base_path):
+    import fnmatch
+    
     train_folder = None
     val_folder = None
     test_folder = None
     
-    for item in os.listdir(dataset_path):
-        item_path = os.path.join(dataset_path, item)
-        if os.path.isdir(item_path):
-            item_lower = item.lower()
-            if 'train' in item_lower:
-                train_folder = item_path
-            elif 'val' in item_lower or 'valid' in item_lower:
-                val_folder = item_path
-            elif 'test' in item_lower:
-                test_folder = item_path
+    for root, dirs, files in os.walk(base_path):
+        train_dirs = [d for d in dirs if 'train' in d.lower()]
+        val_dirs = [d for d in dirs if 'val' in d.lower() or 'valid' in d.lower()]
+        test_dirs = [d for d in dirs if 'test' in d.lower()]
+        
+        if train_dirs and val_dirs and test_dirs:
+            train_folder = os.path.join(root, train_dirs[0])
+            val_folder = os.path.join(root, val_dirs[0])
+            test_folder = os.path.join(root, test_dirs[0])
+            break
     
     return train_folder, val_folder, test_folder
 
@@ -115,7 +106,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
     print(f"Mode: {'AUGMENTED ONLY' if only_augmented else 'ALL IMAGES'}")
     print(f"{'='*70}")
     
-    # Load DenseNet121
     print("Loading DenseNet121 model...")
     base_model = DenseNet121(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
     x = GlobalAveragePooling2D()(base_model.output)
@@ -123,7 +113,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
     model.trainable = False
     print("✓ Model loaded (1024 features)")
     
-    # Check split structure
     split_type = check_split_structure(dataset_path)
     
     if split_type == 'train_val_test':
@@ -135,7 +124,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
             print("✗ Could not locate all three folders")
             return None
         
-        # Load train
         print(f"\nLoading train from: {train_folder}")
         train_class_images = find_images_by_class(train_folder, only_augmented)
         
@@ -151,7 +139,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
         
         train_labels = np.array(train_labels)
         
-        # Load validation
         print(f"\nLoading validation from: {val_folder}")
         val_class_images = find_images_by_class(val_folder, only_augmented)
         
@@ -265,13 +252,11 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
         
         all_labels = np.array(all_labels)
         
-        # Split 70:30
         train_paths, temp_paths, train_labels, temp_labels = train_test_split(
             all_paths, all_labels, test_size=0.30, random_state=42,
             stratify=all_labels if len(np.unique(all_labels)) > 1 else None
         )
         
-        # Split 30 into 10:20
         val_paths, test_paths, val_labels, test_labels = train_test_split(
             temp_paths, temp_labels, test_size=0.67, random_state=42,
             stratify=temp_labels if len(np.unique(temp_labels)) > 1 else None
@@ -282,7 +267,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
         print(f"  Validation: {len(val_paths)}")
         print(f"  Test: {len(test_paths)}")
     
-    # Extract features
     print("\n[Extracting train features...]")
     train_features = extract_features_batch(train_paths, model)
     
@@ -296,7 +280,6 @@ def process_dataset_direct(dataset_path, output_folder, dataset_name, only_augme
         print("✗ Failed to extract features")
         return None
     
-    # Save
     suffix = '_augmented' if only_augmented else ''
     output_path = os.path.join(output_folder, f"{dataset_name}{suffix}_densenet121_features.npz")
     np.savez_compressed(output_path,
