@@ -1,9 +1,8 @@
 import random
 from deap import base, creator, tools, algorithms
-from sklearn.model_selection import cross_val_score
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 import numpy as np
+
 
 def setup_nsga2(num_features):
     if not hasattr(setup_nsga2, "initialized"):
@@ -17,6 +16,7 @@ def setup_nsga2(num_features):
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     return toolbox
 
+
 def guided_crossover(ind1, ind2, indpb=0.5):
     """Custom crossover preserving important features"""
     for i in range(len(ind1)):
@@ -25,6 +25,7 @@ def guided_crossover(ind1, ind2, indpb=0.5):
         elif random.random() < indpb:
             ind1[i], ind2[i] = ind2[i], ind1[i]
     return ind1, ind2
+
 
 def guided_mutation(individual, importance_scores=None, mutpb=0.1):
     """Mutation with importance-based probability"""
@@ -37,7 +38,8 @@ def guided_mutation(individual, importance_scores=None, mutpb=0.1):
                 individual[i] = 1 - individual[i]
     return (individual,)
 
-def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
+
+def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='svm'):
     """Enhanced evaluation with validation set"""
     selected_idx = [i for i, bit in enumerate(individual) if bit == 1]
     
@@ -48,12 +50,10 @@ def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
     X_val_selected = X_val[:, selected_idx]
     
     try:
-        if classifier_type == 'rf':
-            clf = RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42)
-        elif classifier_type == 'svm':
-            clf = SVC(kernel='rbf', random_state=42)
+        if classifier_type == 'svm':
+            clf = SVC(kernel='linear', probability=True, random_state=42)
         else:
-            clf = RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42)
+            clf = SVC(kernel='linear', probability=True, random_state=42)
         
         clf.fit(X_train_selected, y_train)
         accuracy = clf.score(X_val_selected, y_val)
@@ -63,8 +63,9 @@ def evaluate(individual, X_train, y_train, X_val, y_val, classifier_type='rf'):
     
     return (accuracy, len(selected_idx))
 
+
 def run_nsga2(X_train, y_train, X_val, y_val, population_size=50, ngen=30, 
-              initial_pop=None, importance_scores=None, classifier_type='rf'):
+              initial_pop=None, importance_scores=None, classifier_type='svm'):
     """Run NSGA-II with enhanced parameters"""
     num_features = X_train.shape[1]
     toolbox = setup_nsga2(num_features)

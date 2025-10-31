@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 
+
 def check_dependencies():
     """Check if all required packages are installed"""
     print("="*70)
@@ -48,16 +49,19 @@ def check_dependencies():
     
     print("✓ All dependencies installed\n")
 
+
 # Check dependencies first
 check_dependencies()
 
+
 # Import modules
 from feature_extraction import process_all_datasets
-from base_feature_selection import generate_initial_population, embedded_rf, filter_anova
+from base_feature_selection import generate_initial_population, filter_anova
 from nsga2_optimization import run_nsga2, evaluate
 from classification_evaluation import compare_methods
 from visualization import (plot_pareto_front, plot_confusion_matrix,
                           plot_comparison_bar, export_results_to_csv)
+
 
 def main():
     # """Main pipeline execution - AUGMENTED DATA ONLY"""
@@ -108,19 +112,23 @@ def main():
     all_feature_files = [f for f in os.listdir('./features') 
                         if f.endswith('.npz')]
 
+
     if len(all_feature_files) == 0:
         print("✗ No feature files found!")
         sys.exit(1)
 
+
     print(f"Processing {len(all_feature_files)} datasets\n")
 
+
     all_results = []
+
 
     for idx, feature_file in enumerate(all_feature_files, 1):
         # Extract dataset name by removing all possible suffixes
         dataset_name = feature_file
         for suffix in ['_augmented_densenet121_features.npz', '_densenet121_features.npz', 
-                    '_vgg16_features.npz', '_features.npz']:
+                      '_vgg16_features.npz', '_features.npz']:
             dataset_name = dataset_name.replace(suffix, '')
         
         print(f"\n{'='*70}")
@@ -150,16 +158,16 @@ def main():
             # Run NSGA-II
             print(f"\n  Running NSGA-II optimization...")
             pareto_front = run_nsga2(X_train, y_train, X_val, y_val,
-                                    population_size=50, ngen=30,
-                                    initial_pop=initial_pop,
-                                    importance_scores=importance_scores,
-                                    classifier_type='rf')
+                                     population_size=50, ngen=30,
+                                     initial_pop=initial_pop,
+                                     importance_scores=importance_scores,
+                                     classifier_type='svm')  # Changed to 'svm'
             
             # Extract Pareto results
             print(f"\n  Extracting Pareto solutions...")
             pareto_results = []
             for ind in pareto_front:
-                acc, num_feat = evaluate(ind, X_train, y_train, X_val, y_val, 'rf')
+                acc, num_feat = evaluate(ind, X_train, y_train, X_val, y_val, 'svm')  # Changed to 'svm'
                 pareto_results.append({
                     'indices': [i for i, bit in enumerate(ind) if bit == 1],
                     'accuracy': acc,
@@ -167,7 +175,7 @@ def main():
                 })
             
             best_solution = max(pareto_results, 
-                              key=lambda x: x['accuracy'] / (x['num_features'] + 1))
+                                key=lambda x: x['accuracy'] / (x['num_features'] + 1))
             ga_indices = best_solution['indices']
             
             print(f"  ✓ Best solution: {len(ga_indices)} features, "
@@ -176,19 +184,19 @@ def main():
             # Generate visualizations
             print(f"\n  Generating visualizations...")
             plot_pareto_front(pareto_results, 
-                            f'./results/{dataset_name}_augmented_pareto.png',
-                            f"{dataset_name} (Augmented)")
+                              f'./results/{dataset_name}_augmented_pareto.png',
+                              f"{dataset_name} (Augmented)")
             
             # Final evaluation on test set
             print(f"\n  Final evaluation on test set...")
             metrics_all, metrics_filter, metrics_ga = compare_methods(
                 X_train, y_train, X_test, y_test,
-                filter_indices, ga_indices, 'rf'
+                filter_indices, ga_indices, 'svm'  # Changed to 'svm'
             )
             
             plot_confusion_matrix(metrics_ga['confusion_matrix'],
-                                f'./results/{dataset_name}_augmented_confusion.png',
-                                f"{dataset_name} (Augmented)")
+                                  f'./results/{dataset_name}_augmented_confusion.png',
+                                  f"{dataset_name} (Augmented)")
             
             comparison = {
                 'All Features': metrics_all,
@@ -196,8 +204,8 @@ def main():
                 'GA (NSGA-II)': metrics_ga
             }
             plot_comparison_bar(comparison,
-                              f'./results/{dataset_name}_augmented_comparison.png',
-                              f"{dataset_name} (Augmented)")
+                               f'./results/{dataset_name}_augmented_comparison.png',
+                               f"{dataset_name} (Augmented)")
             
             # Store results
             all_results.append({
@@ -217,6 +225,7 @@ def main():
             import traceback
             traceback.print_exc()
             continue
+
 
     print(f"\n{'='*70}")
     print("EXPORTING RESULTS SUMMARY")
@@ -242,6 +251,7 @@ def main():
     print("Results saved in './results/' directory")
     print("All results use AUGMENTED DATA ONLY")
     print("="*70)
+
 
 # Run the main function
 if __name__ == "__main__":
