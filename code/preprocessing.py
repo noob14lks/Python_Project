@@ -35,8 +35,10 @@ def load_images_with_labels(image_paths, img_size=(224, 224), batch_size=500):
         print(f"    Batch {batch_start//batch_size + 1}: {batch_start}-{batch_end}", end='\r')
         
         for img_path in batch_paths:
+            # Get class from parent folder
             parent_dir = os.path.basename(os.path.dirname(img_path))
             
+            # Skip generic folder names
             if parent_dir.lower() in ['original', 'augmented', 'images']:
                 parent_dir = os.path.basename(os.path.dirname(os.path.dirname(img_path)))
             
@@ -48,6 +50,7 @@ def load_images_with_labels(image_paths, img_size=(224, 224), batch_size=500):
             try:
                 img = Image.open(img_path).convert('RGB')
                 img = img.resize(img_size)
+                # Use float32 instead of float64 to save memory
                 img_array = np.array(img, dtype=np.float32) / 255.0
                 images.append(img_array)
                 labels.append(class_dict[parent_dir])
@@ -61,6 +64,7 @@ def load_images_with_labels(image_paths, img_size=(224, 224), batch_size=500):
     
     class_names = sorted(class_dict.keys(), key=lambda x: class_dict[x])
     
+    # Convert to numpy arrays with float32 (saves 50% memory vs float64)
     return np.array(images, dtype=np.float32), np.array(labels, dtype=np.int32), class_names
 
 def split_and_prepare_dataset(dataset_path, output_folder, dataset_name, skip_augmented=True):

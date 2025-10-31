@@ -208,17 +208,10 @@ project_root/
 
 After data extraction, execute the main workflow.
 
-1. Navigate to the code folder:
+Run the following command from the Project root.
 
 ```bash
-cd ./code/
-
-```
-
-2. Run the main pipeline:
-
-```bash
-python main.py
+python ./code/main.py
 
 ```
 
