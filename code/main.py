@@ -60,42 +60,42 @@ from visualization import (plot_pareto_front, plot_confusion_matrix,
                           plot_comparison_bar, export_results_to_csv)
 
 def main():
-    # """Main pipeline execution - AUGMENTED DATA ONLY"""
-    # print("\n" + "="*70)
-    # print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
-    # print("Based on Bohrer et al. (2024)")
-    # print("MODE: AUGMENTED DATA ONLY")
-    # print("="*70)
+    """Main pipeline execution - AUGMENTED DATA ONLY"""
+    print("\n" + "="*70)
+    print("MULTI-OBJECTIVE GENETIC ALGORITHM FOR FEATURE SELECTION")
+    print("Based on Bohrer et al. (2024)")
+    print("MODE: AUGMENTED DATA ONLY")
+    print("="*70)
     
-    # # Create necessary folders
-    # os.makedirs('./features', exist_ok=True)
-    # os.makedirs('./results', exist_ok=True)
+    # Create necessary folders
+    os.makedirs('./features', exist_ok=True)
+    os.makedirs('./results', exist_ok=True)
     
-    # # ========================================================================
-    # # STEP 1: DIRECT FEATURE EXTRACTION (AUGMENTED ONLY)
-    # # ========================================================================
-    # print("\n" + "="*70)
-    # print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
-    # print("="*70)
+    # ========================================================================
+    # STEP 1: DIRECT FEATURE EXTRACTION (AUGMENTED ONLY)
+    # ========================================================================
+    print("\n" + "="*70)
+    print("[STEP 1] EXTRACTING CNN FEATURES FROM AUGMENTED IMAGES")
+    print("="*70)
     
-    # data_folder = './data/extracteddata'
+    data_folder = './data/extracteddata'
     
-    # if not os.path.exists(data_folder):
-    #     print(f"✗ Error: '{data_folder}' not found!")
-    #     sys.exit(1)
+    if not os.path.exists(data_folder):
+        print(f"✗ Error: '{data_folder}' not found!")
+        sys.exit(1)
     
-    # # Extract features from augmented data only
-    # feature_files = process_all_datasets(
-    #     input_folder=data_folder,
-    #     output_folder='./features',
-    #     only_augmented=True  # ← AUGMENTED DATA ONLY
-    # )
+    # Extract features from augmented data only
+    feature_files = process_all_datasets(
+        input_folder=data_folder,
+        output_folder='./features',
+        only_augmented=True  # ← AUGMENTED DATA ONLY
+    )
     
-    # if len(feature_files) == 0:
-    #     print("\n✗ No datasets were successfully processed!")
-    #     sys.exit(1)
+    if len(feature_files) == 0:
+        print("\n✗ No datasets were successfully processed!")
+        sys.exit(1)
     
-    # print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
+    print(f"\n✓ Extracted features from {len(feature_files)} datasets (AUGMENTED ONLY)")
     
     # ========================================================================
     # STEP 2: FEATURE SELECTION WITH NSGA-II
